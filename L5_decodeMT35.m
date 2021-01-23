@@ -1,5 +1,4 @@
-function satdata = af_udreconst(satdata,~,~,do_mt28,~)
-
+function svdata = L5_decodeMT35(time, msg, svdata)
 %*************************************************************************
 %*     Copyright c 2021 The board of trustees of the Leland Stanford     *
 %*                      Junior University. All rights reserved.          *
@@ -10,30 +9,29 @@ function satdata = af_udreconst(satdata,~,~,do_mt28,~)
 %*     twalter@stanford.edu                                              *
 %*************************************************************************
 %
-global UDREI_CONST
-global COL_SAT_UDREI COL_SAT_COV COL_SAT_SCALEF COL_SAT_MINMON
+% Decodes Message Type 35 
+%   per ED-259A
+%
+% SEE ALSO: L5_decode_messages
 
+%created 28 December, 2020 by Todd Walter
 
-nsat = size(satdata,1);
+% copy older messages over
+svdata.mt35(2:end) = svdata.mt35(1:(end-1));
 
-%all satellite meet the minimum monitoring criteria (used for hisogram)
-satdata(:,COL_SAT_MINMON)=ones(nsat,1);
+%read in DFREIs
+idx = 11;
+for jdx = 1:53
+    svdata.mt35(1).dfrei(jdx) = bin2dec(msg(idx:(idx+3))) + 1; %convert from MOPS 0-15 to matlab 1-16
+    idx = idx + 4;
+end
 
-%all satellites have the same UDREI value
-satdata(:,COL_SAT_UDREI) = repmat(UDREI_CONST,nsat,1);
+% skip two reserve bits
+idx = idx + 2;
 
-%if using MT 28 put in the identity matrix for XYZ and 0 for clock
-if do_mt28
-  a=eye(4);
-  a(4,4)=0;
-  a=a(:)';
-  satdata(:,COL_SAT_COV)=repmat(a,nsat,1);
-  satdata(:,COL_SAT_SCALEF)=zeros(nsat,1);
-end   
+%read in IODM
+svdata.mt35(1).iodm = bin2dec(msg(idx:(idx+1)));
 
+svdata.mt35(1).time = time;
 
-
-
-
-
-
+svdata.mt35(1).msg_idx = mod(round(time), 700) + 1;
